@@ -1,44 +1,52 @@
-function showEmailAlert(result) {
-    const box = document.createElement("div");
+let lastEmailId = null;
 
-    box.style.position = "fixed";
-    box.style.top = "20px";
-    box.style.right = "20px";
-    box.style.zIndex = "999999";
-    box.style.padding = "15px";
-    box.style.background = result.label === 1 ? "#e74c3c" : "#27ae60";
-    box.style.color = "white";
-    box.style.borderRadius = "10px";
-    box.style.fontSize = "14px";
-    box.innerHTML = `
-        <b>${result.label === 1 ? "Phishing Email" : "Safe Email"}</b><br>
-        ${(result.probability * 100).toFixed(2)}%
-    `;
-
-    document.body.appendChild(box);
-
-    setTimeout(() => box.remove(), 5000);
-}
-
-// Detect Gmail email body change
 const observer = new MutationObserver(() => {
+    const subjectEl = document.querySelector("h2.hP");  
+    const bodyEl = document.querySelector("div.a3s.aiL, div.a3s");
 
-    const emailBody = document.querySelector(".a3s.aiL");
+    if (subjectEl && bodyEl) {
+        const emailText = subjectEl.innerText + "\n" + bodyEl.innerText;
 
-    if (emailBody && !emailBody.dataset.checked) {
+        const emailId = subjectEl.innerText + bodyEl.innerText.substring(0, 30);
 
-        emailBody.dataset.checked = "true";
+        if (emailId !== lastEmailId) {
+            lastEmailId = emailId;
 
-        chrome.runtime.sendMessage({
-            type: "CHECK_EMAIL",
-            text: emailBody.innerText
-        }, (response) => {
-            if (response) showEmailAlert(response);
-        });
+            const oldPopup = document.getElementById("phishshield-popup");
+            if (oldPopup) oldPopup.remove();
+
+            analyzeEmail(emailText);
+        }
     }
 });
 
-observer.observe(document.body, {
-    childList: true,
-    subtree: true
-});
+observer.observe(document.body, { childList: true, subtree: true });
+
+function analyzeEmail(text) {
+    fetch("http://localhost:5000/predict/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+    })
+    .then(res => res.json())
+    .then(data => {
+        showPopup(data.label, data.probability);
+    });
+}
+
+function showPopup(label, prob) {
+    const popup = document.createElement("div");
+    popup.id = "phishshield-popup";
+
+    popup.className = label === 1 ? "phishing" : "safe";
+
+    popup.innerHTML = `
+        <h3>${label === 1 ? "⚠️ Phishing Detected!" : "✔️ Safe Email"}</h3>
+        <p><strong>Probability:</strong> ${(prob*100).toFixed(2)}%</p>
+        <button id="phishshield-btn">OK</button>
+    `;
+
+    document.body.appendChild(popup);
+
+    popup.querySelector("#phishshield-btn").onclick = () => popup.remove();
+}

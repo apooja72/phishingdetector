@@ -1,35 +1,35 @@
 {
   "manifest_version": 3,
-  "name": "Multi-Vector Phishing Detector",
+  "name": "PhishShield Multi-Vector Detector",
   "version": "1.0",
-
+  "description": "Detect phishing URLs, Emails and Attachments",
   "permissions": [
-    "tabs",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs",
+    "storage"
   ],
-
   "host_permissions": [
+    "<all_urls>",
     "http://localhost:5000/*"
   ],
-
   "background": {
     "service_worker": "background.js"
   },
-
   "action": {
     "default_popup": "popup.html"
   },
-
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content_url.js"],
+      "css": ["style.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://mail.google.com/*"],
       "js": ["content_email.js"],
+      "css": ["style.css"],
       "run_at": "document_idle"
     }
   ]

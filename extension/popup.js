@@ -1,21 +1,37 @@
-document.getElementById("scan").addEventListener("click", () => {
+document.getElementById("scanBtn").addEventListener("click", async () => {
 
-    const file = document.getElementById("file").files[0];
+  const fileInput = document.getElementById("fileInput");
+  const resultDiv = document.getElementById("result");
 
-    if (!file) {
-        alert("Select a file first");
-        return;
+  if (!fileInput.files.length) {
+    resultDiv.textContent = "⚠️ Select file first";
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  try {
+    const res = await fetch("http://localhost:5000/predict/attachment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ filename: file.name })
+    });
+
+    const data = await res.json();
+
+    const pct = (data.probability * 100).toFixed(2);
+
+    if (data.label === 1) {
+      resultDiv.style.color = "red";
+      resultDiv.textContent = `🚨 PHISHING (${pct}%)`;
+    } else {
+      resultDiv.style.color = "green";
+      resultDiv.textContent = `✅ SAFE (${pct}%)`;
     }
 
-    chrome.runtime.sendMessage({
-        type: "CHECK_ATTACHMENT",
-        filename: file.name
-    }, (res) => {
-
-        document.getElementById("result").innerHTML =
-            `<h4 style="color:${res.label === 1 ? 'red' : 'green'}">
-                ${res.label === 1 ? "Phishing File" : "Safe File"}
-            </h4>
-            <p>Probability: ${(res.probability * 100).toFixed(2)}%</p>`;
-    });
+  } catch (e) {
+    resultDiv.textContent = "Backend not reachable";
+  }
 });
